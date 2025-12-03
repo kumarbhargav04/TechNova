@@ -1,16 +1,54 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import List, Optional
 
 class AddressResolveRequest(BaseModel):
-    address: str = Field(..., description="Unstructured Indian address string containing landmarks, local spellings, etc.")
+    address: str = Field(
+        ...,
+        min_length=3,
+        max_length=1000,
+        description="Unstructured Indian address string containing landmarks, local spellings, etc."
+    )
     user_id: Optional[int] = Field(None, description="The ID of the user submitting the request")
-    target_language: Optional[str] = Field(None, description="Selected output translation language (supporting 100+ families)")
+    target_language: Optional[str] = Field(None, max_length=50, description="Selected output translation language (supporting 100+ families)")
+
+    @field_validator("address")
+    @classmethod
+    def validate_address_content(cls, v: str) -> str:
+        cleaned = v.strip()
+        if len(cleaned) < 3:
+            raise ValueError("Address must contain at least 3 non-whitespace characters")
+        return cleaned
+
+    @field_validator("target_language")
+    @classmethod
+    def sanitize_language(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        cleaned = v.strip()
+        return cleaned if cleaned else None
 
 
 class EvidenceItem(BaseModel):
-    source: str
-    description: str
-    score: float
+    source: str = Field(..., description="Agent or data source providing this evidence")
+    description: str = Field(..., description="Human-readable explanation of the deduction or verification")
+    score: float = Field(..., ge=0.0, le=1.0, description="Confidence score from 0.0 to 1.0")
+
+    model_config = ConfigDict(from_attributes=True)
+
+class GeocodingCandidateSchema(BaseModel):
+    name: str
+    latitude: float
+    longitude: float
+    category: Optional[str] = None
+    confidence: float = Field(..., ge=0.0, le=100.0)
+    distance_meters: Optional[float] = None
+
+class HealthStatusSchema(BaseModel):
+    status: str
+    service: str
+    version: str
+    database_connected: bool
+    timestamp: str
 
 class AddressResolveResponse(BaseModel):
     original_address: str
