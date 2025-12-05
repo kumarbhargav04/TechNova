@@ -1,17 +1,33 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router as api_router
 from app.database.db import init_db, SessionLocal, PincodeMaster
+from app.core.exceptions import PataAIException
+from app.core.config import settings
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = FastAPI(
-    title="PataAI API",
+    title=settings.app_name,
     description="AI-powered Indian Address Intelligence System for Last-Mile Delivery",
-    version="1.0.0"
+    version=settings.app_version
 )
+
+# Global domain exception handler
+@app.exception_handler(PataAIException)
+async def handle_pata_exception(request: Request, exc: PataAIException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": exc.__class__.__name__,
+            "message": exc.message,
+            "details": exc.details,
+            "path": request.url.path,
+        }
+    )
 
 # Configure CORS for frontend access
 app.add_middleware(
