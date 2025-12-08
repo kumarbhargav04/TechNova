@@ -1,4 +1,24 @@
 import math
+import difflib
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class RankingWeights:
+    """
+    Configurable weight allocation for candidate geocode ranking formula.
+    Total maximum score sums to 100.0.
+    """
+    MAX_LANDMARK_SCORE: float = 40.0
+    MAX_PINCODE_SCORE: float = 25.0
+    MAX_LOCALITY_SCORE: float = 20.0
+    MAX_LANGUAGE_SCORE: float = 15.0
+
+    # Distance penalties
+    PINCODE_NEAR_DISTANCE_M: float = 1500.0
+    PINCODE_MID_DISTANCE_M: float = 3000.0
+    LOCALITY_PROXIMITY_M: float = 2500.0
+
+DEFAULT_WEIGHTS = RankingWeights()
 
 def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """
@@ -70,18 +90,18 @@ def rank_candidates(
         # Pincode score: maximum 25. Deduct if it's very far from the pincode centroid.
         if pin_dist == float('inf'):
             pin_score = 10.0  # missing pincode fallback
-        elif pin_dist <= 1500:
-            pin_score = 25.0
-        elif pin_dist <= 3000:
+        elif pin_dist <= DEFAULT_WEIGHTS.PINCODE_NEAR_DISTANCE_M:
+            pin_score = DEFAULT_WEIGHTS.MAX_PINCODE_SCORE
+        elif pin_dist <= DEFAULT_WEIGHTS.PINCODE_MID_DISTANCE_M:
             pin_score = 18.0
         else:
             pin_score = 10.0
             
         # Locality score: maximum 20. High if it's within pincode bounds.
-        loc_score = 20.0 if pin_dist <= 2500 else 12.0
+        loc_score = DEFAULT_WEIGHTS.MAX_LOCALITY_SCORE if pin_dist <= DEFAULT_WEIGHTS.LOCALITY_PROXIMITY_M else 12.0
         
         # Language score: maximum 15. Based on clean translation.
-        lang_score = 15.0 if lang_info["language"] != "Failed" else 8.0
+        lang_score = DEFAULT_WEIGHTS.MAX_LANGUAGE_SCORE if lang_info.get("language") != "Failed" else 8.0
         
         total_score = lm_score + pin_score + loc_score + lang_score
         

@@ -1,7 +1,28 @@
+from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 from app.database.db import PincodeMaster
+from app.agents.types import EvidenceCallback, PincodeInfo
 
-def verify_pincode(parsed_pincode: str, parsed_locality: str, parsed_city: str, db: Session, evidence_callback) -> dict:
+NOISE_WORDS = ("opposite", "near", "behind", "beside", "opp", "nr", "adjacent to", "next to", "close to")
+
+def clean_locality_string(text: Optional[str]) -> str:
+    """
+    Strips common Indian prepositional landmark noise words from search query strings.
+    """
+    if not text:
+        return ""
+    cleaned = text.lower()
+    for word in NOISE_WORDS:
+        cleaned = cleaned.replace(word, "")
+    return cleaned.strip()
+
+def verify_pincode(
+    parsed_pincode: Optional[str],
+    parsed_locality: Optional[str],
+    parsed_city: Optional[str],
+    db: Session,
+    evidence_callback: EvidenceCallback
+) -> Dict[str, Any]:
     """
     Checks the pincode against the database. If missing or incorrect, corrects it based on locality.
     """
@@ -43,8 +64,8 @@ def verify_pincode(parsed_pincode: str, parsed_locality: str, parsed_city: str, 
         search_term = parsed_locality if parsed_locality else parsed_city
         if not search_term:
             return result
-        # Remove common noise words like 'opposite', 'near', etc.
-        clean_search = search_term.lower().replace("opposite", "").replace("near", "").replace("behind", "").replace("beside", "").strip()
+        # Remove common prepositional noise words
+        clean_search = clean_locality_string(search_term)
         if not clean_search:
             return result
         
