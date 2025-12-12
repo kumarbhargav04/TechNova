@@ -1,5 +1,35 @@
 import os
 import re
+from typing import Optional, Dict
+
+# Canonical ISO 639-1 code to standard language name map
+ISO_639_1_MAP: Dict[str, str] = {
+    "te": "Telugu",
+    "hi": "Hindi",
+    "ta": "Tamil",
+    "kn": "Kannada",
+    "ml": "Malayalam",
+    "mr": "Marathi",
+    "bn": "Bengali",
+    "gu": "Gujarati",
+    "pa": "Punjabi",
+    "ur": "Urdu",
+    "or": "Odia",
+    "as": "Assamese",
+    "sa": "Sanskrit",
+    "en": "English",
+}
+
+def normalize_language_code(code_or_name: Optional[str]) -> Optional[str]:
+    """
+    Normalizes ISO 639-1 language code or language name into standard title-cased name.
+    """
+    if not code_or_name:
+        return None
+    cleaned = code_or_name.strip().lower()
+    if cleaned in ISO_639_1_MAP:
+        return ISO_639_1_MAP[cleaned]
+    return code_or_name.strip().title()
 
 # ============================================================================
 # UNICODE SCRIPT DETECTION — All 22 Scheduled Indian Languages + Global Scripts

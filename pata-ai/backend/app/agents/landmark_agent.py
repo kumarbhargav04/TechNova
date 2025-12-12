@@ -1,8 +1,13 @@
 import os
 import httpx
 import asyncio
+from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from app.database.db import LandmarkCache
+from app.core.config import settings
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 # Curated landmark fallback list for demo test cases (Hyderabad, Delhi, Bangalore, Mumbai)
 DEMO_LANDMARKS = [
@@ -49,12 +54,13 @@ DEMO_LANDMARKS = [
     {"name": "Sarathi Studios", "category": "cinema", "latitude": 17.4350, "longitude": 78.4390, "resolved_locality": "Yousufguda Main Road"}
 ]
 
-async def search_osm_overpass(query: str, center_lat: float, center_lon: float, radius: int = 2500) -> list:
+async def search_osm_overpass(query: str, center_lat: float, center_lon: float, radius: int = 2500) -> List[Dict[str, Any]]:
     """
     Queries OSM Overpass API for POIs matching the query near the given center coordinates.
-    Timeout is capped at 5.0 seconds to allow the public volunteer server to resolve.
+    Timeout is configured via settings to allow the public volunteer server to resolve gracefully.
     """
-    overpass_url = "http://overpass-api.de/api/interpreter"
+    overpass_url = settings.osm_overpass_url
+    timeout = settings.overpass_timeout_seconds
     
     # Standard OSM Overpass QL query looking for matching nodes or ways
     # We clean up common noise words
@@ -73,7 +79,7 @@ async def search_osm_overpass(query: str, center_lat: float, center_lon: float, 
     
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.post(overpass_url, data={"data": overpass_query}, timeout=1.5)
+            response = await client.post(overpass_url, data={"data": overpass_query}, timeout=timeout)
             if response.status_code == 200:
                 data = response.json()
                 results = []
@@ -90,9 +96,13 @@ async def search_osm_overpass(query: str, center_lat: float, center_lon: float, 
                         "source": "OpenStreetMap Live"
                     })
                 return results
-    except Exception:
-        # Silently fail to trigger standard fallback without raising an error
-        pass
+            else:
+                logger.warning(f"OSM Overpass returned status {response.status_code} for query '{clean_query}'")
+    except httpx.TimeoutException:
+        logger.info(f"OSM Overpass request timed out after {timeout}s for '{clean_query}', falling back to cache")
+    except Exception as exc:
+        logger.warning(f"OSM Overpass request failed for '{clean_query}': {exc}, falling back to cache")
+    return []
     return []
 
 async def find_landmarks(landmark_name: str, pincode_lat: float, pincode_lon: float, db: Session, evidence_callback) -> list:
