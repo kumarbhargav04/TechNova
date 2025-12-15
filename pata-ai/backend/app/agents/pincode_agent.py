@@ -1,6 +1,11 @@
 from typing import Optional, Dict, Any
-from sqlalchemy.orm import Session
-from app.database.db import PincodeMaster
+try:
+    from sqlalchemy.orm import Session
+    from app.database.db import PincodeMaster
+except ImportError:
+    Session = Any
+    PincodeMaster = None
+
 from app.agents.types import EvidenceCallback, PincodeInfo
 
 NOISE_WORDS = ("opposite", "near", "behind", "beside", "opp", "nr", "adjacent to", "next to", "close to")

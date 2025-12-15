@@ -138,16 +138,17 @@ def rank_candidates(
         else:
             evidence_desc = "Pincode centroid reference"
             
+        office_name = pincode_info.get("office") or pincode_info.get("pincode") or "Area"
         candidates.append({
-            "name": f"{pincode_info['office']} Centroid",
+            "name": f"{office_name} Centroid",
             "latitude": pincode_info["latitude"],
             "longitude": pincode_info["longitude"],
             "confidence": total_score,
             "type": "Pincode Centroid",
             "evidence": [
                 "No physical landmark matched nearby",
-                f"Using verified Pincode {pincode_info['pincode']} centroid",
-                f"Locality resolved to {pincode_info['office']}"
+                f"Using verified Pincode {pincode_info.get('pincode', 'N/A')} centroid",
+                f"Locality resolved to {office_name}"
             ]
         })
 
