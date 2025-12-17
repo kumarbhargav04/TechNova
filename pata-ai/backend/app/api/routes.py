@@ -1,10 +1,20 @@
 import hashlib
 import os
 import json
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime, timezone
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from app.database.db import get_db, AddressRequest, EvidenceLog, User, PincodeMaster, LandmarkCache
-from app.models.models import AddressResolveRequest, AddressResolveResponse, UserSchema, BulkResolveRequest, BulkResolveItem
+from app.models.models import (
+    AddressResolveRequest,
+    AddressResolveResponse,
+    UserSchema,
+    BulkResolveRequest,
+    BulkResolveItem,
+    HealthStatusSchema,
+)
+from app.core.config import settings
 
 from app.agents.langgraph_pipeline import run_langgraph_pipeline
 from pydantic import BaseModel
@@ -19,6 +29,44 @@ class UserCreate(BaseModel):
 class UserLogin(BaseModel):
     username: str
     password: str
+
+@router.get("/healthz", response_model=HealthStatusSchema, tags=["Operational"])
+def health_check(db: Session = Depends(get_db)):
+    """
+    Operational liveness and database readiness probe.
+    """
+    db_ok = True
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception:
+        db_ok = False
+
+    return HealthStatusSchema(
+        status="healthy" if db_ok else "degraded",
+        service=settings.app_name,
+        version=settings.app_version,
+        database_connected=db_ok,
+        timestamp=datetime.now(timezone.utc).isoformat()
+    )
+
+@router.get("/metrics", tags=["Operational"])
+def get_metrics(db: Session = Depends(get_db)):
+    """
+    Basic telemetry metrics for address resolution requests and database cache state.
+    """
+    try:
+        total_requests = db.query(AddressRequest).count()
+        total_pincodes = db.query(PincodeMaster).count()
+        total_cached_landmarks = db.query(LandmarkCache).count()
+    except Exception:
+        total_requests, total_pincodes, total_cached_landmarks = 0, 0, 0
+
+    return {
+        "address_requests_total": total_requests,
+        "pincode_records_total": total_pincodes,
+        "landmark_cache_entries": total_cached_landmarks,
+        "environment": settings.environment
+    }
 
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
