@@ -103,7 +103,6 @@ async def search_osm_overpass(query: str, center_lat: float, center_lon: float, 
     except Exception as exc:
         logger.warning(f"OSM Overpass request failed for '{clean_query}': {exc}, falling back to cache")
     return []
-    return []
 
 async def find_landmarks(landmark_name: str, pincode_lat: float, pincode_lon: float, db: Session, evidence_callback) -> list:
     """
