@@ -1,8 +1,13 @@
 import os
 import re
 import json
-from sqlalchemy.orm import Session
-from app.database.db import PincodeMaster
+from typing import Any, Optional
+try:
+    from sqlalchemy.orm import Session
+    from app.database.db import PincodeMaster
+except ImportError:
+    Session = Any
+    PincodeMaster = None
 
 # A quick list of cities and states for basic regex matching
 COMMON_CITIES = ["hyderabad", "secunderabad", "bangalore", "bengaluru", "delhi", "new delhi", "noida", "mumbai"]

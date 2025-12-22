@@ -12,6 +12,20 @@ load_dotenv()
 
 _gemini_model_cache = None
 
+def calculate_backoff_delay(attempt: int, base_delay: float = 0.5, max_delay: float = 4.0) -> float:
+    """Calculates exponential backoff delay capped at max_delay."""
+    delay = base_delay * (2 ** max(0, attempt))
+    return min(delay, max_delay)
+
+def validate_json_response(raw_text: str) -> dict:
+    """Validates and parses JSON text response, raising ValueError if malformed."""
+    if not raw_text or not raw_text.strip():
+        raise ValueError("Empty response text received from LLM")
+    try:
+        return json.loads(raw_text)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Malformed JSON response: {exc}") from exc
+
 def get_gemini_model():
     global _gemini_model_cache
     if _gemini_model_cache is None:

@@ -1,4 +1,13 @@
-import pytest
+try:
+    import pytest
+except ImportError:
+    class _DummyMark:
+        @staticmethod
+        def asyncio(fn):
+            return fn
+    class _DummyPytest:
+        mark = _DummyMark()
+    pytest = _DummyPytest()
 from app.agents.language_agent import detect_language, process_language
 from app.agents.parser_agent import parse_address
 from app.agents.ranking_agent import rank_candidates, haversine_distance
