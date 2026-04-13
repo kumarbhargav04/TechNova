@@ -1,14 +1,22 @@
 import os
 import json
 import warnings
-import httpx
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore", FutureWarning)
-    import google.generativeai as genai
-from dotenv import load_dotenv
+try:
+    import httpx
+except ImportError:
+    httpx = None
+try:
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", FutureWarning)
+        import google.generativeai as genai
+except ImportError:
+    genai = None
 
-# Load environment variables (searches for .env file)
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 _gemini_model_cache = None
 

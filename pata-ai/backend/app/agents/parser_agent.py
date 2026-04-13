@@ -1,5 +1,31 @@
+import os
 import re
+import json
 from typing import Dict, Any, Optional
+
+PINCODE_PATTERN = re.compile(r"\b([1-9][0-9]{5})\b")
+LANDMARK_KEYWORDS = ["near", "opp", "opposite", "behind", "beside", "next to", "adjacent", "front of"]
+COMMON_CITIES = ["hyderabad", "secunderabad", "bangalore", "bengaluru", "delhi", "new delhi", "noida", "mumbai"]
+COMMON_STATES = ["telangana", "karnataka", "delhi", "uttar pradesh", "up", "maharashtra", "punjab", "ap", "andhra pradesh"]
+
+async def parse_address(normalized_address: str, db: Any = None, evidence_callback = None) -> dict:
+    cb = evidence_callback or (lambda *args, **kwargs: None)
+    parsed = {"landmark": None, "locality": None, "city": None, "state": None, "pincode": None}
+    pincode_match = re.search(r'\b\d{6}\b', normalized_address)
+    if pincode_match:
+        parsed["pincode"] = pincode_match.group(0)
+        cb("Parser Agent", f"Regex extracted pincode: {parsed['pincode']}", 1.0)
+    for city in COMMON_CITIES:
+        if city in normalized_address.lower():
+            parsed["city"] = city.title()
+            break
+    for state in COMMON_STATES:
+        if state in normalized_address.lower():
+            parsed["state"] = state.upper() if len(state) <= 3 else state.title()
+            break
+    parsed["used_llm"] = False
+    return parsed
+
 
 PINCODE_PATTERN = re.compile(r"\b([1-9][0-9]{5})\b")
 LANDMARK_KEYWORDS = ["near", "opp", "opposite", "behind", "beside", "next to", "adjacent", "front of"]
